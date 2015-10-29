@@ -9,12 +9,10 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -27,11 +25,8 @@ import com.foursquare.android.nativeoauth.model.AccessTokenResponse;
 import com.foursquare.android.nativeoauth.model.AuthCodeResponse;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.LocationAvailability;
-import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.squareup.okhttp.Callback;
 import com.squareup.okhttp.MediaType;
@@ -92,21 +87,12 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("Location", "changed to " + location);
             }
         });
-
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        /*
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        toolbar.inflateMenu(R.menu.menu_main);
-        */
-
-//        setSupportActionBar(toolbar);
-
 
         gaClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
@@ -276,6 +262,11 @@ public class MainActivity extends AppCompatActivity {
         url += "&oauth_token=" + accessToken;
         url += "&v=20151006";
 
+        if (Intent.ACTION_SEARCH.equals(getIntent().getAction())) {
+            String query = getIntent().getStringExtra(SearchManager.QUERY);
+            url += "&query=" + query;
+        }
+
         Request request = new Request.Builder()
                 .url(url)
                 .build();
@@ -319,7 +310,6 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-
     }
 
     private void tryLoginWith4sq() {
@@ -393,29 +383,32 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
-        MenuItem searchItem = menu.findItem(R.id.action_search);
 
+        // Associate searchable configuration with the SearchView
         SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
-        SearchView searchView = (SearchView) MenuItemCompat.getActionView(searchItem);
-        // Configure the search info and add any event listeners
-
+        SearchView searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
         searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
-        searchView.setIconifiedByDefault(false); // Do not iconify the widget; expand it by default
 
-        return super.onCreateOptionsMenu(menu);
-
-//        getMenuInflater().inflate(R.menu.menu_main, menu);
-//        return true;
-
+        return true;
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
+    protected void onNewIntent(Intent intent) {
+        Log.d("Search", "onNewIntent");
+        handleIntent(intent);
+    }
 
-        return super.onOptionsItemSelected(item);
+    private void handleIntent(Intent intent) {
+        Log.d("Search", "handleIntent");
+        /*
+        if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
+            String query = intent.getStringExtra(SearchManager.QUERY);
+            //use the query to search your data somehow
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
+            final String accessToken = sp.getString(KEY_FOURSQUARE_AUTH_TOKEN, null);
+
+            getNearbyVenues(accessToken, query);
+        }
+        */
     }
 }

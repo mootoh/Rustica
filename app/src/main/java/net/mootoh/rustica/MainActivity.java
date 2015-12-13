@@ -16,9 +16,7 @@ import android.view.Menu;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ListView;
-import android.widget.Toast;
 
 import com.foursquare.android.nativeoauth.FoursquareOAuth;
 import com.foursquare.android.nativeoauth.model.AccessTokenResponse;
@@ -75,18 +73,31 @@ public class MainActivity extends AppCompatActivity {
         requestLocation();
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        Log.d(TAG, "onRequestPermissionResult");
+        requestLocation();
+    }
+
     void requestLocation() {
+        Log.d(TAG, "requestLocation");
         LocationRequest req = new LocationRequest();
         req.setInterval(10000);
         req.setFastestInterval(5000);
 
-//        req.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         LocationServices.FusedLocationApi.requestLocationUpdates(gaClient, req, new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
                 Log.d("Location", "changed to " + location);
+                searchVenues();
             }
         });
+    }
+
+    private String savedAuthCode() {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
+        return sp.getString(KEY_FOURSQUARE_AUTH_CODE, null);
     }
 
     @Override
@@ -94,6 +105,16 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        String authCode = savedAuthCode();
+        if (authCode == null) {
+            tryLoginWith4sq();
+        } else {
+            connectToGoogleApi();
+            setupListView();
+        }
+    }
+
+    private void connectToGoogleApi() {
         gaClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
                     @Override
@@ -103,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
                         Log.d(TAG, "last location " + lastLocation);
                         if (lastLocation == null) {
                             checkAndRequestPermission();
+                            return;
                         }
                         searchVenues();
                     }
@@ -122,7 +144,9 @@ public class MainActivity extends AppCompatActivity {
                 .addApi(LocationServices.API)
                 .build();
         gaClient.connect();
+    }
 
+    private void setupListView() {
         ListView listView = (ListView) findViewById(R.id.list_view);
         listView.setAdapter(new ArrayAdapter<Venue>(this, android.R.layout.simple_list_item_1, venues));
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -133,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
                 checkin(venue);
             }
         });
-        updateWithAuthCode();
+//        updateWithAuthCode();
     }
 
     private void checkin(Venue venue) {
@@ -207,41 +231,6 @@ public class MainActivity extends AppCompatActivity {
         final String accessToken = sp.getString(KEY_FOURSQUARE_AUTH_TOKEN, null);
         if (accessToken != null) {
             start(accessToken);
-        }
-    }
-
-    private void updateWithAuthCode() {
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
-        String authCode = sp.getString(KEY_FOURSQUARE_AUTH_CODE, null);
-
-        Button loginButton = (Button) findViewById(R.id.login_4sq_button);
-        if (authCode == null) {
-            loginButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tryLoginWith4sq();
-                }
-            });
-        } else {
-            Toast.makeText(this, "authCode=" + authCode, Toast.LENGTH_SHORT).show();
-
-            final String accessToken = sp.getString(KEY_FOURSQUARE_AUTH_TOKEN, null);
-            if (accessToken == null) {
-                loginButton.setVisibility(View.GONE);
-
-                getAccessToken(authCode);
-            } else {
-                Toast.makeText(this, "accessToken = " + accessToken, Toast.LENGTH_SHORT).show();
-
-                loginButton.setText("Checkin");
-                loginButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        start(accessToken);
-                    }
-                });
-
-            }
         }
     }
 
@@ -330,7 +319,7 @@ public class MainActivity extends AppCompatActivity {
                 edit.putString(KEY_FOURSQUARE_AUTH_CODE, codeResponse.getCode());
                 edit.commit();
 
-                updateWithAuthCode();
+//                updateWithAuthCode();
                 getAccessToken(codeResponse.getCode());
 
                 break;

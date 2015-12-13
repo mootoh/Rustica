@@ -12,8 +12,4 @@
     </android.support.design.widget.AppBarLayout>
 
     <include layout="@layout/content_main" />
-    <Button
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:id="@+id/login_4sq_button"/>
 </android.support.design.widget.CoordinatorLayout>

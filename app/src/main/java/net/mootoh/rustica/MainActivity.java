@@ -17,6 +17,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import com.foursquare.android.nativeoauth.FoursquareOAuth;
 import com.foursquare.android.nativeoauth.model.AccessTokenResponse;
@@ -90,14 +91,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onLocationChanged(Location location) {
                 Log.d("Location", "changed to " + location);
+                lastLocation = location;
                 searchVenues();
             }
         });
     }
 
-    private String savedAuthCode() {
+    private String savedAuthToken() {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
-        return sp.getString(KEY_FOURSQUARE_AUTH_CODE, null);
+        return sp.getString(KEY_FOURSQUARE_AUTH_TOKEN, null);
     }
 
     @Override
@@ -105,8 +107,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        String authCode = savedAuthCode();
-        if (authCode == null) {
+        String authToken = savedAuthToken();
+        if (authToken == null) {
             tryLoginWith4sq();
         } else {
             connectToGoogleApi();
@@ -132,7 +134,6 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onConnectionSuspended(int i) {
                         Log.d(TAG, "onConnectionSuspended");
-
                     }
                 })
                 .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
@@ -152,12 +153,19 @@ public class MainActivity extends AppCompatActivity {
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Log.d("xxx", "clicked: " + position);
                 Venue venue = venues.get(position);
                 checkin(venue);
             }
         });
-//        updateWithAuthCode();
+    }
+
+    private void showToastOnUiThread(final String message) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void checkin(Venue venue) {
@@ -181,49 +189,18 @@ public class MainActivity extends AppCompatActivity {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Request request, IOException e) {
-                Log.e(TAG, "fail: " + e.getLocalizedMessage());
+                showToastOnUiThread("Failed in checkin: " + e.getLocalizedMessage());
             }
 
             @Override
             public void onResponse(Response response) throws IOException {
                 if (response.code() / 100 != 2) {
-                    Log.e("Rustica", "something bad happen: " + response.message());
+                    showToastOnUiThread("something bad happen: " + response.message());
                     return;
                 }
-                String resBody = response.body().string();
-                Log.d(TAG, "checkin: " + resBody);
-                /*
-                try {
-                    JSONObject top = new JSONObject(resBody);
-                    JSONObject res = top.getJSONObject("response");
-                    JSONArray groups = res.getJSONArray("groups");
-                    JSONObject firstGroup = groups.getJSONObject(0);
-                    JSONArray items = firstGroup.getJSONArray("items");
-
-                    for (int i=0; i<items.length(); i++) {
-                        JSONObject item = items.getJSONObject(i);
-                        JSONObject venueObject = item.getJSONObject("venue");
-                        Venue venue = new Venue();
-                        venue.id = venueObject.getString("id");
-                        venue.name = venueObject.getString("name");
-                        venues.add(venue);
-                    }
-
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            ListView listView = (ListView) findViewById(R.id.list_view);
-                            ArrayAdapter<String> aa = (ArrayAdapter<String>) listView.getAdapter();
-                            aa.notifyDataSetChanged();
-                        }
-                    });
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-*/
+                showToastOnUiThread("checked in!");
             }
         });
-
     }
 
     private void searchVenues() {
@@ -296,7 +273,6 @@ public class MainActivity extends AppCompatActivity {
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
-
             }
         });
     }
@@ -319,9 +295,7 @@ public class MainActivity extends AppCompatActivity {
                 edit.putString(KEY_FOURSQUARE_AUTH_CODE, codeResponse.getCode());
                 edit.commit();
 
-//                updateWithAuthCode();
                 getAccessToken(codeResponse.getCode());
-
                 break;
             case REQUEST_CODE_FSQ_TOKEN_EXCHANGE:
                 AccessTokenResponse tokenResponse = FoursquareOAuth.getTokenFromResult(resultCode, data);
@@ -333,6 +307,8 @@ public class MainActivity extends AppCompatActivity {
 
                 edit.putString(KEY_FOURSQUARE_AUTH_TOKEN, tokenResponse.getAccessToken());
                 edit.commit();
+
+                connectToGoogleApi();
                 break;
             default:
                 break;
@@ -345,30 +321,6 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(intent, REQUEST_CODE_FSQ_TOKEN_EXCHANGE);
     }
 
-    private void tryLogin() {
-        String url = "https://foursquare.com/oauth2/authenticate\n" +
-                "?client_id=" + BuildConfig.foursquare_client_id + "\n" +
-                "&response_type=code\n" +
-                "&redirect_uri=YOUR_REGISTERED_REDIRECT_URI";
-
-        OkHttpClient client = new OkHttpClient();
-        Request req = new Request.Builder()
-                .url(url)
-                .build();
-
-        client.newCall(req).enqueue(new Callback() {
-            @Override
-            public void onFailure(Request request, IOException e) {
-                Log.d(TAG, "fail: " + e.getLocalizedMessage());
-            }
-
-            @Override
-            public void onResponse(Response response) throws IOException {
-                Log.d(TAG, "success: " + response.body().string());
-            }
-        });
-    }
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
@@ -379,25 +331,5 @@ public class MainActivity extends AppCompatActivity {
         searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
 
         return true;
-    }
-
-    @Override
-    protected void onNewIntent(Intent intent) {
-        Log.d("Search", "onNewIntent");
-        handleIntent(intent);
-    }
-
-    private void handleIntent(Intent intent) {
-        Log.d("Search", "handleIntent");
-        /*
-        if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
-            String query = intent.getStringExtra(SearchManager.QUERY);
-            //use the query to search your data somehow
-            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
-            final String accessToken = sp.getString(KEY_FOURSQUARE_AUTH_TOKEN, null);
-
-            getNearbyVenues(accessToken, query);
-        }
-        */
     }
 }

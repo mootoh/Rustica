@@ -224,10 +224,10 @@ public class MainActivity extends AppCompatActivity {
     Location lastLocation;
 
     private void start(String accessToken) {
-        getNearbyVenues(accessToken);
+        searchNearbyVenues(accessToken);
     }
 
-    private void getNearbyVenues(String accessToken) {
+    private void exploreNearbyVenues(String accessToken) {
         if (lastLocation == null)
             return;
         OkHttpClient client = new OkHttpClient();
@@ -268,6 +268,65 @@ public class MainActivity extends AppCompatActivity {
                     for (int i = 0; i < items.length(); i++) {
                         JSONObject item = items.getJSONObject(i);
                         JSONObject venueObject = item.getJSONObject("venue");
+                        Venue venue = new Venue();
+                        venue.id = venueObject.getString("id");
+                        venue.name = venueObject.getString("name");
+                        venues.add(venue);
+                    }
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            ListView listView = (ListView) findViewById(R.id.list_view);
+                            ArrayAdapter<String> aa = (ArrayAdapter<String>) listView.getAdapter();
+                            aa.notifyDataSetChanged();
+                        }
+                    });
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+    private void searchNearbyVenues(String accessToken) {
+        if (lastLocation == null)
+            return;
+        OkHttpClient client = new OkHttpClient();
+
+        String url = "https://api.foursquare.com/v2/venues/search";
+        url += "?ll=" + lastLocation.getLatitude() + "," + lastLocation.getLongitude();
+        url += "&oauth_token=" + accessToken;
+        url += "&v=20151006";
+
+        if (Intent.ACTION_SEARCH.equals(getIntent().getAction())) {
+            String query = getIntent().getStringExtra(SearchManager.QUERY);
+            url += "&query=" + query;
+        }
+
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Request request, IOException e) {
+                Log.e(TAG, "fail: " + e.getLocalizedMessage());
+                stopRefreshing();
+            }
+
+            @Override
+            public void onResponse(Response response) throws IOException {
+                stopRefreshing();
+                String resBody = response.body().string();
+                Log.d(TAG, "venues: " + resBody);
+                try {
+                    JSONObject top = new JSONObject(resBody);
+                    JSONObject res = top.getJSONObject("response");
+                    JSONArray vns = res.getJSONArray("venues");
+
+                    for (int i = 0; i < vns.length(); i++) {
+                        JSONObject venueObject = vns.getJSONObject(i);
                         Venue venue = new Venue();
                         venue.id = venueObject.getString("id");
                         venue.name = venueObject.getString("name");

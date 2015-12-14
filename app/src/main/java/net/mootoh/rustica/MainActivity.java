@@ -9,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
 import android.util.Log;
@@ -106,13 +107,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        setupViews();
 
         String authToken = savedAuthToken();
         if (authToken == null) {
             tryLoginWith4sq();
         } else {
             connectToGoogleApi();
-            setupListView();
         }
     }
 
@@ -147,7 +148,7 @@ public class MainActivity extends AppCompatActivity {
         gaClient.connect();
     }
 
-    private void setupListView() {
+    private void setupViews() {
         ListView listView = (ListView) findViewById(R.id.list_view);
         listView.setAdapter(new ArrayAdapter<Venue>(this, android.R.layout.simple_list_item_1, venues));
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -155,6 +156,14 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Venue venue = venues.get(position);
                 checkin(venue);
+            }
+        });
+
+        SwipeRefreshLayout swipeRefresh = (SwipeRefreshLayout) findViewById(R.id.swipeRefresh);
+        swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                requestLocation();
             }
         });
     }
@@ -236,14 +245,17 @@ public class MainActivity extends AppCompatActivity {
         Request request = new Request.Builder()
                 .url(url)
                 .build();
+
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Request request, IOException e) {
                 Log.e(TAG, "fail: " + e.getLocalizedMessage());
+                stopRefreshing();
             }
 
             @Override
             public void onResponse(Response response) throws IOException {
+                stopRefreshing();
                 String resBody = response.body().string();
                 Log.d(TAG, "venues: " + resBody);
                 try {
@@ -253,7 +265,7 @@ public class MainActivity extends AppCompatActivity {
                     JSONObject firstGroup = groups.getJSONObject(0);
                     JSONArray items = firstGroup.getJSONArray("items");
 
-                    for (int i=0; i<items.length(); i++) {
+                    for (int i = 0; i < items.length(); i++) {
                         JSONObject item = items.getJSONObject(i);
                         JSONObject venueObject = item.getJSONObject("venue");
                         Venue venue = new Venue();
@@ -277,6 +289,15 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void stopRefreshing() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final SwipeRefreshLayout swipeRefresh = (SwipeRefreshLayout) findViewById(R.id.swipeRefresh);
+                swipeRefresh.setRefreshing(false);
+            }
+        });
+    }
     private void tryLoginWith4sq() {
         Properties props = new Properties();
         Intent intent = FoursquareOAuth.getConnectIntent(getApplicationContext(), BuildConfig.foursquare_client_id);

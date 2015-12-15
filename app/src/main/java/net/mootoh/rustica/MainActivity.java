@@ -43,9 +43,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Properties;
 
+class Category {
+    String id;
+    String name;
+    String icon;
+}
+
 class Venue {
     String id;
     String name;
+    Category primaryCategory;
 
     @Override
     public String toString() {
@@ -271,6 +278,19 @@ public class MainActivity extends AppCompatActivity {
                         Venue venue = new Venue();
                         venue.id = venueObject.getString("id");
                         venue.name = venueObject.getString("name");
+                        JSONArray categories = venueObject.getJSONArray("categories");
+                        for (int j=0; j<categories.length(); j++) {
+                            JSONObject category = categories.getJSONObject(j);
+                            if (category.get("primary") != null) {
+                                Category cat = new Category();
+                                cat.id = category.getString("id");
+                                cat.name = category.getString("name");
+                                cat.icon = category.getString("icon");
+
+                                venue.primaryCategory = cat;
+                            }
+                        }
+
                         venues.add(venue);
                     }
 

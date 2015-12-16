@@ -20,6 +20,8 @@
         android:layout_height="wrap_content"
         app:elevation="4dp"
         android:layout_gravity="bottom|right|end"
-        android:src="@android:drawable/ic_menu_search"
+        android:layout_marginBottom="16dp"
+        android:layout_marginRight="8dp"
+        android:src="@drawable/ic_search_white_48dp"
         />
 </android.support.design.widget.CoordinatorLayout>

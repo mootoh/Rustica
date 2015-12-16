@@ -172,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d(TAG, "clicked");
+                onSearchRequested();
             }
         });
     }

@@ -208,6 +208,12 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
                 showToastOnUiThread("checked in!");
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        finish();
+                    }
+                });
             }
         });
     }

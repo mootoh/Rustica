@@ -22,6 +22,12 @@ android {
     }
 }
 
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+}
+
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.0.0'
@@ -30,7 +36,7 @@ dependencies {
 
     implementation 'com.google.android.gms:play-services-location:17.0.0'
     implementation 'com.squareup.okhttp:okhttp:2.4.0'
-    implementation 'com.foursquare:foursquare-android-oauth:1.0.3'
+    implementation(name:'foursquare-oauth-library-20200326', ext:'aar')
 
     testImplementation 'junit:junit:4.12'
 

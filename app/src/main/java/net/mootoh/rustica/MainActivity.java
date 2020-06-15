@@ -9,9 +9,6 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v4.widget.SwipeRefreshLayout;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -20,14 +17,19 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
 import com.foursquare.android.nativeoauth.FoursquareOAuth;
 import com.foursquare.android.nativeoauth.model.AccessTokenResponse;
 import com.foursquare.android.nativeoauth.model.AuthCodeResponse;
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.LocationListener;
-import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.squareup.okhttp.Callback;
 import com.squareup.okhttp.MediaType;
 import com.squareup.okhttp.OkHttpClient;
@@ -62,13 +64,11 @@ public class MainActivity extends AppCompatActivity {
 
     ArrayList<Venue> venues = new ArrayList<>();
 
-    final private int REQUEST_CODE_ASK_PERMISSIONS = 123;
-
     void checkAndRequestPermission() {
-        int hasPermission = checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION);
-        if (hasPermission != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[] {
-                            Manifest.permission.ACCESS_COARSE_LOCATION},
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            int REQUEST_CODE_ASK_PERMISSIONS = 123;
+            requestPermissions(new String[]{
+                            Manifest.permission.ACCESS_FINE_LOCATION},
                     REQUEST_CODE_ASK_PERMISSIONS);
             return;
         }
@@ -84,16 +84,31 @@ public class MainActivity extends AppCompatActivity {
 
     void requestLocation() {
         Log.d(TAG, "requestLocation");
-        LocationRequest req = new LocationRequest();
-        req.setInterval(10000);
-        req.setFastestInterval(5000);
 
-        LocationServices.FusedLocationApi.requestLocationUpdates(gaClient, req, new LocationListener() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            Log.e(TAG, "no no self permission");
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        LocationServices.getFusedLocationProviderClient(this)
+                .getLastLocation()
+                .addOnSuccessListener(new OnSuccessListener<Location>() {
+                    @Override
+                    public void onSuccess(Location location) {
+                        Log.d("Location", "changed to " + location);
+                        lastLocation = location;
+                        searchVenues();
+                    }
+                }).addOnFailureListener(new OnFailureListener() {
             @Override
-            public void onLocationChanged(Location location) {
-                Log.d("Location", "changed to " + location);
-                lastLocation = location;
-                searchVenues();
+            public void onFailure(@NonNull Exception e) {
+                Log.e(TAG, "failed in locating: " + e.getLocalizedMessage());
             }
         });
     }
@@ -108,44 +123,18 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         setupViews();
+        checkAndRequestPermission();
 
         String authToken = savedAuthToken();
         if (authToken == null) {
             tryLoginWith4sq();
         } else {
-            connectToGoogleApi();
+            if (lastLocation == null) {
+                checkAndRequestPermission();
+                return;
+            }
+            searchVenues();
         }
-    }
-
-    private void connectToGoogleApi() {
-        gaClient = new GoogleApiClient.Builder(this)
-                .addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
-                    @Override
-                    public void onConnected(Bundle bundle) {
-                        Log.d(TAG, "onConnected");
-                        lastLocation = LocationServices.FusedLocationApi.getLastLocation(gaClient);
-                        Log.d(TAG, "last location " + lastLocation);
-                        if (lastLocation == null) {
-                            checkAndRequestPermission();
-                            return;
-                        }
-                        searchVenues();
-                    }
-
-                    @Override
-                    public void onConnectionSuspended(int i) {
-                        Log.d(TAG, "onConnectionSuspended");
-                    }
-                })
-                .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
-                    @Override
-                    public void onConnectionFailed(ConnectionResult connectionResult) {
-                        Log.e(TAG, "onConnectionFailed");
-                    }
-                })
-                .addApi(LocationServices.API)
-                .build();
-        gaClient.connect();
     }
 
     private void setupViews() {
@@ -226,7 +215,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    GoogleApiClient gaClient;
     Location lastLocation;
 
     private void start(String accessToken) {
@@ -377,7 +365,7 @@ public class MainActivity extends AppCompatActivity {
         switch (requestCode) {
             case REQUEST_CODE_FSQ_CONNECT:
                 AuthCodeResponse codeResponse = FoursquareOAuth.getAuthCodeFromResult(resultCode, data);
-                Log.d(TAG, "got authCode " + codeResponse.getCode());
+                Log.d(TAG, "CONNECT: got authCode " + codeResponse.getCode());
                 edit.putString(KEY_FOURSQUARE_AUTH_CODE, codeResponse.getCode());
                 edit.commit();
 
@@ -385,21 +373,25 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case REQUEST_CODE_FSQ_TOKEN_EXCHANGE:
                 AccessTokenResponse tokenResponse = FoursquareOAuth.getTokenFromResult(resultCode, data);
-                Log.d(TAG, "got accessToken " + tokenResponse.getAccessToken());
+                Log.d(TAG, "EXCHANGE: got accessToken " + tokenResponse.getAccessToken());
                 if (tokenResponse.getException() != null) {
-                    Log.e(TAG, "got exception = " + tokenResponse.getException());
+                    Log.e(TAG, "EXCHANGE: got exception = " + tokenResponse.getException() + ", cause = " + tokenResponse.getException().getCause());
                     return;
                 }
 
                 edit.putString(KEY_FOURSQUARE_AUTH_TOKEN, tokenResponse.getAccessToken());
                 edit.commit();
 
-                connectToGoogleApi();
+                if (lastLocation == null) {
+                    checkAndRequestPermission();
+                    return;
+                }
+                searchVenues();
                 break;
             default:
                 break;
         }
-
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     private void getAccessToken(String authCode) {
@@ -410,12 +402,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
-
         // Associate searchable configuration with the SearchView
         SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
         SearchView searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
         searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
-
         return true;
     }
 }

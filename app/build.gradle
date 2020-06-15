@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion "23.0.1"
+    compileSdkVersion 29
+    buildToolsVersion "23.0.3"
 
     defaultConfig {
         applicationId "net.mootoh.rustica"
-        minSdkVersion 15
-        targetSdkVersion 23
+        minSdkVersion 23
+        targetSdkVersion 29
         versionCode 1
         versionName "1.0"
 
@@ -20,19 +20,29 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    packagingOptions {
+        exclude 'AndroidManifest.xml'
+        exclude 'res/drawable/notification_bg.xml'
+        exclude 'res/drawable/notification_bg_low.xml'
+        exclude 'res/layout/notification_template_part_time.xml'
+        exclude 'res/layout/notification_template_part_chronometer.xml'
+        exclude 'resources.arsc'
+    }
 }
 
 dependencies {
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.0.0'
+    implementation 'androidx.coordinatorlayout:coordinatorlayout:1.1.0'
+    implementation 'com.google.android.material:material:1.1.0'
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:appcompat-v7:23.1.0'
-    compile 'com.android.support:design:23.1.0'
-    compile 'com.android.support:support-v4:23.1.0'
 
-    compile 'com.google.android.gms:play-services-location:8.3.0'
+    compile 'com.google.android.gms:play-services-location:17.0.0'
     compile 'com.squareup.okhttp:okhttp:2.4.0'
-    compile 'com.foursquare:foursquare-android-oauth:1.0.3'
+    compile 'com.foursquare:foursquare-android-oauth:1.1.0'
 
-    testCompile 'junit:junit:4.12'
+    testCompile 'junit:junit:4.13'
 }
 
 // thanks to http://stackoverflow.com/questions/25854849/use-a-local-properties-field-when-declaring-a-buildconfigfield

@@ -1,4 +1,4 @@
-package net.mootoh.rustica;
+package net.mootoh.rustica2;
 
 import android.app.SearchManager;
 import android.content.Intent;

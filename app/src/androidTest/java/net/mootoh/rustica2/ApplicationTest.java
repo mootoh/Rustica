@@ -1,4 +1,4 @@
-package net.mootoh.rustica;
+package net.mootoh.rustica2;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;

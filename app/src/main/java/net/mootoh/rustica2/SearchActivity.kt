@@ -1,67 +1,55 @@
-package net.mootoh.rustica2;
+package net.mootoh.rustica2
 
-import android.app.SearchManager;
-import android.content.Intent;
-import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
+import android.app.SearchManager
+import android.content.Intent
+import android.os.Bundle
+import android.util.Log
+import android.view.View
+import android.widget.AdapterView.OnItemClickListener
+import android.widget.ArrayAdapter
+import android.widget.ListView
+import androidx.appcompat.app.AppCompatActivity
+import java.util.*
 
-import androidx.appcompat.app.AppCompatActivity;
-
-import java.util.ArrayList;
-
-/**
- * Created by mootoh on 10/9/15.
- */
-public class SearchActivity extends AppCompatActivity {
-    ArrayList<Venue> venues = new ArrayList<>();
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.content_main);
+class SearchActivity : AppCompatActivity() {
+    private var venues = ArrayList<Venue>()
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.content_main)
 
         // Get the intent, verify the action and get the query
-        Intent intent = getIntent();
-        if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
-            String query = intent.getStringExtra(SearchManager.QUERY);
-//            doMySearch(query);
-            Log.d("Search", "query=" + query);
-            updateListView(query);
+        val intent = intent
+        if (Intent.ACTION_SEARCH == intent.action) {
+            val query = intent.getStringExtra(SearchManager.QUERY)
+            //            doMySearch(query);
+            Log.d("Search", "query=$query")
+            updateListView(query)
         }
     }
 
-    @Override
-    protected void onNewIntent(Intent intent) {
-        Log.d("Search", "onNewIntent");
-        handleIntent(intent);
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        Log.d("Search", "onNewIntent")
+        handleIntent(intent)
     }
 
-    private void handleIntent(Intent intent) {
-        Log.d("Search", "handleIntent");
-        if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
-            String query = intent.getStringExtra(SearchManager.QUERY);
+    private fun handleIntent(intent: Intent) {
+        Log.d("Search", "handleIntent")
+        if (Intent.ACTION_SEARCH == intent.action) {
+            val query = intent.getStringExtra(SearchManager.QUERY)
             //use the query to search your data somehow
         }
     }
 
-    void updateListView(String query) {
-        ListView listView = (ListView) findViewById(R.id.list_view);
-        listView.setAdapter(new ArrayAdapter<Venue>(this, android.R.layout.simple_list_item_1, venues));
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Log.d("xxx", "clicked: " + position);
-                Venue venue = venues.get(position);
-//                checkin(venue);
-            }
-        });
-
-    }
-/*
+    fun updateListView(query: String?) {
+        val listView = findViewById<View>(R.id.list_view) as ListView
+        listView.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, venues)
+        listView.onItemClickListener = OnItemClickListener { parent, view, position, id ->
+            Log.d("xxx", "clicked: $position")
+            val venue = venues[position]
+            //                checkin(venue);
+        }
+    } /*
     private void getNearbyVenues(String query, String accessToken) {
         if (lastLocation == null)
             return;

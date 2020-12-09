@@ -2,9 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/Rustica.iml" filepath="$PROJECT_DIR$/Rustica.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" group="Rustica/app" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/code-Rustica.iml" filepath="$PROJECT_DIR$/.idea/modules/code-Rustica.iml" group="Rustica" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Rustica.iml" filepath="$PROJECT_DIR$/.idea/modules/Rustica.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Rustica.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Rustica.app.iml" />
     </modules>
   </component>
 </project>
